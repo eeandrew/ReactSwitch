@@ -19786,18 +19786,19 @@
 				translateX: 0,
 				initX: 0,
 				transitionDuration: 0,
-				dragging: false
+				open: false
 			};
-
+			_this.dragging = false;
 			_this.TRANSITION_DURATION = 150;
 			_this.x = 0;
+			_this.MAX_MOVE_RANGE = 63;
 			return _this;
 		}
 
 		_createClass(ReactSwitch, [{
 			key: 'handleTouchStart',
 			value: function handleTouchStart(e) {
-				this.setState({ dragging: true });
+				this.dragging = true;
 				var point = e.touches ? e.touches[0] : e;
 				this.setState({ transitionDuration: 0 });
 
@@ -19807,7 +19808,7 @@
 		}, {
 			key: 'handleTouchMove',
 			value: function handleTouchMove(e) {
-				if (!this.state.dragging) return;
+				if (!this.dragging) return;
 				var point = e.touches ? e.touches[0] : e,
 				    deltaX = point.pageX - this.pointX,
 				    newX = undefined;
@@ -19816,12 +19817,12 @@
 
 				newX = this.x + deltaX;
 
-				if (Math.abs(newX) > this.props.maxSwipe) {
-					newX = this.x + deltaX / 3;
+				//最大滑动范围 20px
+				if (Math.abs(newX) > this.MAX_MOVE_RANGE) {
+					return;
 				}
-
-				if (this.props.direction === 'LEFT' && newX > 0) return;
-				if (this.props.direction === 'RIGHT' && newX < 0) return;
+				if (this.state.open && newX > this.MAX_MOVE_RANGE) return;
+				if (!this.state.open && newX < 0) return;
 
 				this.setState({
 					translateX: newX
@@ -19831,13 +19832,13 @@
 		}, {
 			key: 'handleTouchEnd',
 			value: function handleTouchEnd(e) {
-				this.setState({ dragging: false });
+				this.dragging = false;
 				this.onTouchCancel.bind(this)(e);
 			}
 		}, {
 			key: 'handleTouchCancel',
 			value: function handleTouchCancel(e) {
-				this.setState({ dragging: false });
+				this.dragging = false;
 				this.onTouchCancel.bind(this)(e);
 			}
 		}, {
@@ -19848,35 +19849,44 @@
 				this.setState({
 					transitionDuration: this.TRANSITION_DURATION
 				});
-				if (Math.abs(newX) > this.props.maxSwipe) {
+				console.log(newX);
+				if (Math.abs(newX) > this.MAX_MOVE_RANGE / 2 && !this.state.open || this.state.open && this.MAX_MOVE_RANGE - Math.abs(newX) > this.MAX_MOVE_RANGE / 2) {
 					this.setState({
-						translateX: this.props.maxSwipe * (newX > 0 ? 1 : -1)
+						open: !this.state.open
 					});
-					this.x = this.props.maxSwipe * (newX > 0 ? 1 : -1);
+					if (Math.abs(newX) > this.MAX_MOVE_RANGE / 2 && !this.state.open) {
+						this.setState({
+							translateX: this.MAX_MOVE_RANGE
+						});
+					}
+					if (this.state.open && this.MAX_MOVE_RANGE - Math.abs(newX) > this.MAX_MOVE_RANGE / 2) {
+						this.setState({
+							translateX: 0
+						});
+					}
+
+					this.x = newX > 0 ? this.MAX_MOVE_RANGE : 0;
 				} else {
 					this.setState({
-						translateX: 0
+						translateX: newX > 0 ? 0 : this.MAX_MOVE_RANGE
 					});
-					this.x = 0;
+					this.x = newX > 0 ? 0 : this.MAX_MOVE_RANGE;
 				}
 			}
 		}, {
 			key: 'render',
 			value: function render() {
 				var tranformStyle = {
-					transform: 'translate3D(' + this.state.translateX + 'px' + ',0,0' + ')',
-					//transform : 'translateX(' + this.state.translateX  + 'px' +')',
-					transitionTimingFunction: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-					transitionDuration: this.state.transitionDuration + 'ms'
+					transform: 'translate3D(' + this.state.translateX + 'px' + ',0,0' + ')'
 				};
 
 				var switchStyle = {
 					display: 'inline-block',
 					position: 'relative',
-					width: '44px',
+					width: '84px',
 					height: '22px',
 					borderRadius: '20px',
-					background: 'blue'
+					background: this.state.open ? '#2db7f5' : '#ccc'
 				};
 
 				var switchInnerStyle = {
@@ -19884,16 +19894,25 @@
 					width: '20px',
 					height: '20px',
 					borderRadius: '50%',
-					background: 'gray',
-					top: '1px',
-					transition: 'left .3s cubic-bezier(.78, .14, .15, .86)',
-					msTransition: 'left .3s cubic-bezier(.78, .14, .15, .86)',
-					WebkitTransition: 'left .3s cubic-bezier(.78, .14, .15, .86)'
+					background: '#fff',
+					top: '1px'
 				};
+				//transition:'left .3s cubic-bezier(.78, .14, .15, .86)',
+				//msTransition:'left .3s cubic-bezier(.78, .14, .15, .86)',
+				//WebkitTransition:'left .3s cubic-bezier(.78, .14, .15, .86)',
 				return _react2.default.createElement(
 					'span',
 					{ style: switchStyle },
-					_react2.default.createElement('span', { style: switchInnerStyle })
+					_react2.default.createElement('span', { style: Object.assign({}, switchInnerStyle, tranformStyle),
+						onTouchStart: this.handleTouchStart.bind(this),
+						onMouseDown: this.handleTouchStart.bind(this),
+						onTouchMove: this.handleTouchMove.bind(this),
+						onMouseMove: this.handleTouchMove.bind(this),
+						onTouchEnd: this.handleTouchEnd.bind(this),
+						onMouseUp: this.handleTouchEnd.bind(this),
+						onTouchCancel: this.handleTouchCancel.bind(this),
+						onMouseCancel: this.handleTouchCancel.bind(this)
+					})
 				);
 			}
 		}]);
